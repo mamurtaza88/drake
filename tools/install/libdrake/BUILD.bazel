@@ -1,0 +1,285 @@
+# -*- python -*-
+
+package(default_visibility = ["//visibility:private"])
+
+load(
+    "@drake//tools/install:install.bzl",
+    "install",
+    "install_cmake_config",
+)
+load(
+    "@drake//tools/skylark:drake_cc.bzl",
+    "drake_cc_googletest",
+    "drake_cc_library",
+    "drake_cc_test",
+    "drake_transitive_installed_hdrs_filegroup",
+)
+load(
+    "@drake//tools/skylark:drake_py.bzl",
+    "drake_py_unittest",
+)
+load("//tools/lint:lint.bzl", "add_lint_tests")
+load(":build_components.bzl", "LIBDRAKE_COMPONENTS")
+load(
+    "//third_party:com_github_bazelbuild_rules_cc/whole_archive.bzl",
+    "cc_whole_archive_library",
+)
+
+install_cmake_config(
+    package = "drake",
+    versioned = False,
+)
+
+# Annotate all of the LIBDRAKE_COMPONENTS as `alwayslink = True`, so that we
+# use the --whole-archive linker flag on them when creating libdrake.so
+cc_whole_archive_library(
+    name = "libdrake_components_whole_archive",
+    deps = LIBDRAKE_COMPONENTS,
+)
+
+# The Drake binary package libdrake.so contains all the symbols from all the
+# LIBDRAKE_COMPONENTS plus the statically-linked Drake externals used by the
+# LIBDRAKE_COMPONENTS.  We use linkstatic=1 here so that the library will not
+# contain any references to constituent shared libraries inside the build tree.
+cc_binary(
+    name = "libdrake.so",
+    linkshared = 1,
+    linkstatic = 1,
+    deps = [
+        ":libdrake_components_whole_archive",
+        ":libdrake_runtime_so_deps",
+    ],
+)
+
+# Gather all of libdrake.so's dependent headers.
+drake_transitive_installed_hdrs_filegroup(
+    name = "libdrake_headers",
+    never_startswith = [
+        # Drake's lcmtypes are installed via the //lcmtypes:install rule,
+        # because they part of a different CMake component than Drake main C++
+        # library.  They should not be part of libdrake.so's installed headers.
+        # (For CMake details, refer to //tools/install/libdrake:drake.cps.in.)
+        "lcmtypes/",
+    ],
+    visibility = ["//bindings/pydrake:__pkg__"],
+    deps = LIBDRAKE_COMPONENTS,
+)
+
+# Combine headers into a library with necessary dependencies, but not object
+# code. (For use with pybind documentation generation.)
+cc_library(
+    name = "drake_headers",
+    hdrs = [":libdrake_headers"],
+    include_prefix = "drake",
+    strip_include_prefix = "/",
+    visibility = [
+        "//bindings/pydrake:__pkg__",
+    ],
+    deps = [
+        ":libdrake_header_only_deps",
+        ":libdrake_runtime_so_deps",
+    ],
+)
+
+# Install libdrake.so along with all transitive headers in the same workspace
+# (i.e. in Drake itself; not externals).
+install(
+    name = "install",
+    install_tests = [
+        "test/find_package_drake_install_test.py",
+        "test/snopt_visibility_install_test.py",
+    ],
+    targets = ["libdrake.so"],
+    hdrs = [":libdrake_headers"],
+    hdr_dest = "include/drake",
+    allowed_externals = ["//:LICENSE.TXT"],  # Root for our #include paths.
+    visibility = ["//:__pkg__"],
+    deps = [
+        ":install_cmake_config",
+    ],
+)
+
+# Depend on CLP's shared library iff CLP is enabled.
+cc_library(
+    name = "clp_deps",
+    deps = select({
+        "//conditions:default": [
+            "@clp",
+        ],
+        "//tools:no_clp": [],
+    }),
+)
+
+# Depend on a shared library used by dReal iff dReal is enabled.
+cc_library(
+    name = "dreal_deps",
+    deps = select({
+        "//conditions:default": [
+            "@nlopt",
+            "@ibex",
+        ],
+        "//tools:no_dreal": [],
+    }),
+)
+
+# Depend on IPOPT's shared library iff IPOPT is enabled.
+cc_library(
+    name = "ipopt_deps",
+    deps = select({
+        "//conditions:default": [
+            "@ipopt",
+        ],
+        "//tools:no_ipopt": [],
+    }),
+)
+
+# Depend on Gurobi's shared library iff Gurobi is enabled.
+cc_library(
+    name = "gurobi_deps",
+    deps = select({
+        "//tools:with_gurobi": ["@gurobi//:gurobi_c"],
+        "//conditions:default": [],
+    }),
+)
+
+# Depend on Mosek's shared library iff Mosek is enabled.
+cc_library(
+    name = "mosek_deps",
+    deps = select({
+        "//tools:with_mosek": ["@mosek"],
+        "//conditions:default": [],
+    }),
+)
+
+# Depend on NLOPT's shared library iff NLOPT is enabled.
+cc_library(
+    name = "nlopt_deps",
+    deps = select({
+        "//conditions:default": [
+            "@nlopt",
+        ],
+        "//tools:no_nlopt": [],
+    }),
+)
+
+# Depend on the subset of VTK's shared libraries that Drake uses.
+cc_library(
+    name = "vtk_deps",
+    deps = [
+        # TODO(jwnimmer-tri) This duplicates the list of VTK libraries needed
+        # by //sensors.  We should find a way for ":drake_shared_library" to be
+        # declared without having to repeat this list here.
+        "@vtk//:vtkCommonCore",
+        "@vtk//:vtkCommonDataModel",
+        "@vtk//:vtkCommonTransforms",
+        "@vtk//:vtkFiltersGeneral",
+        "@vtk//:vtkFiltersSources",
+        "@vtk//:vtkIOGeometry",
+        "@vtk//:vtkIOImage",
+        "@vtk//:vtkRenderingCore",
+        "@vtk//:vtkRenderingOpenGL2",
+    ],
+)
+
+# Depend on X11 iff on Ubuntu and not MacOS.
+cc_library(
+    name = "x11_deps",
+    deps = select({
+        "//conditions:default": [
+            "@x11",
+        ],
+        "//tools/cc_toolchain:apple": [],
+    }),
+)
+
+# Provide a cc_library target that provides libdrake.so, its headers, its
+# header-only dependencies, and its required *.so's.  This is aliased by
+# `//:drake_shared_library`, which is what downstream users will consume if
+# they wish to link to `libdrake.so`.
+cc_library(
+    name = "drake_shared_library",
+    srcs = [":libdrake.so"],
+    hdrs = [":libdrake_headers"],
+    # N.B. To pull in transitive `data` dependencies, we must list
+    # `libdrake.so` as a data target.
+    data = [":libdrake.so"],
+    include_prefix = "drake",
+    strip_include_prefix = "/",
+    visibility = ["//:__pkg__"],
+    deps = [
+        ":drake_headers",
+    ],
+)
+
+# The list of depended-on *.so files. These should ONLY be shared libraries; do
+# not add static dependencies here.
+#
+# TODO(jwnimmer-tri) Ideally, Bazel should be able to handle the depended-on
+# *.so files for us, without us having to know up-front here which dependencies
+# are coming from the WORKSPACE in the form of *.so.
+cc_library(
+    name = "libdrake_runtime_so_deps",
+    deps = [
+        ":clp_deps",
+        ":dreal_deps",
+        ":gurobi_deps",
+        ":ipopt_deps",
+        ":mosek_deps",
+        ":nlopt_deps",
+        ":vtk_deps",
+        ":x11_deps",
+        "//common:drake_marker_shared_library",
+        "@lcm",
+        "@spdlog",
+        "@tinyxml2",
+        "@yaml_cpp",
+    ],
+)
+
+# The list of depended-on header-only libraries that libdrake's header files
+# depend on.  Do not add any object code (shared nor static) here.
+#
+# TODO(jwnimmer-tri) Ideally, drake_cc_library's installed_headers support
+# would capture a list of headerfile dependencies, so that we don't need to
+# write out the "list of libraries directly mentioned in Drake headers" below.
+cc_library(
+    name = "libdrake_header_only_deps",
+    deps = [
+        "//lcmtypes:lcmtypes_drake_cc",
+        "@eigen",
+        "@fmt",
+        "@optitrack_driver//lcmtypes:optitrack_lcmtypes",
+    ],
+)
+
+drake_cc_test(
+    name = "drake_shared_library_test",
+    # Using `drake_shared_library` can cause timeouts in debug mode.
+    timeout = "moderate",
+    deps = [":drake_shared_library"],
+)
+
+drake_cc_googletest(
+    name = "fast_math_test",
+    tags = ["no_kcov"],  # See #10788.
+    deps = [
+        "//:drake_shared_library",
+    ],
+)
+
+drake_py_unittest(
+    name = "header_dependency_test",
+    args = [
+        "$(rootpaths :libdrake_headers)",
+    ],
+    data = [
+        ":libdrake_headers",
+    ],
+    tags = [
+        "lint",
+    ],
+)
+
+add_lint_tests(
+    python_lint_extra_srcs = ["build_components_refresh.py"],
+)

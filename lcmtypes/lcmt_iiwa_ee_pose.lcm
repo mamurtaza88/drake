@@ -1,0 +1,10 @@
+package drake;
+
+// Commands a single set of joint states for the arm.
+struct lcmt_iiwa_ee_pose {
+  // The timestamp in microseconds.
+  int64_t utime;
+
+  double ee_pose[3];
+  double ee_rpy[3];
+}

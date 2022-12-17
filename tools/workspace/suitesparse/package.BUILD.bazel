@@ -1,0 +1,24 @@
+# -*- python -*-
+
+load(":vars.bzl", "LIBDIR")
+
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "amd",
+    hdrs = [
+        "include/SuiteSparse_config.h",
+        "include/amd.h",
+    ],
+    includes = [
+        "include",
+    ],
+    linkopts = [
+        "-L" + LIBDIR,
+        "-lamd",
+        # Explicitly specify transitive dependencies; these are needed when
+        # using static SuiteSparse as in the PyPI wheel builds.
+        "-lsuitesparseconfig",
+    ],
+    licenses = ["notice"],  # BSD-3-Clause
+)

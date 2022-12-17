@@ -1,0 +1,32 @@
+# -*- python -*-
+
+load(
+    "@drake//tools/skylark:drake_cc.bzl",
+    "drake_cc_library",
+)
+load(
+    "@drake//tools/skylark:py.bzl",
+    "py_binary",
+)
+load("//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+drake_cc_library(
+    name = "fixture_common",
+    srcs = ["fixture_common.cc"],
+    hdrs = ["fixture_common.h"],
+    deps = [
+        "@googlebenchmark//:benchmark",
+    ],
+)
+
+py_binary(
+    name = "record_results",
+    srcs = ["record_results.py"],
+    data = [
+        "//tools/workspace/cc:identify_compiler",
+    ],
+)
+
+add_lint_tests(python_lint_extra_srcs = ["benchmark_tool.py"])

@@ -1,0 +1,436 @@
+# -*- python -*-
+
+load(
+    "@drake//tools/skylark:drake_cc.bzl",
+    "drake_cc_googletest",
+    "drake_cc_library",
+    "drake_cc_package_library",
+)
+load("//tools/lint:lint.bzl", "add_lint_tests")
+
+filegroup(
+    name = "test_models",
+    testonly = 1,
+    srcs = glob([
+        "test/**/*.config",
+        "test/**/*.obj",
+        "test/**/*.sdf",
+        "test/**/*.forced_nesting_sdf",
+        "test/**/*.urdf",
+        "test/**/*.xml",
+        "test/**/*.png",
+    ]),
+    visibility = [
+        "//visibility:public",
+    ],
+)
+
+drake_cc_package_library(
+    name = "parsing",
+    visibility = [
+        "//visibility:public",
+    ],
+    deps = [
+        ":detail_misc",
+        ":detail_scene_graph",
+        ":detail_sdf_parser",
+        ":detail_urdf_parser",
+        ":model_directives",
+        ":package_map",
+        ":parser",
+        ":process_model_directives",
+        ":scoped_names",
+    ],
+)
+
+drake_cc_library(
+    name = "package_map",
+    srcs = [
+        "package_map.cc",
+    ],
+    hdrs = [
+        "package_map.h",
+    ],
+    data = [
+        "//:package.xml",
+    ],
+    visibility = [
+        "//visibility:public",
+    ],
+    deps = [
+        "//common",
+        "@tinyxml2",
+    ],
+)
+
+# For simplicity in dependency management (e.g., prevent exposing `sdformat`),
+# we make all `detail_*` headers and libraries private. For more info, see
+# #7451.
+
+drake_cc_library(
+    name = "detail_misc",
+    srcs = [
+        "detail_common.cc",
+        "detail_ignition.cc",
+        "detail_path_utils.cc",
+        "detail_tinyxml.cc",
+    ],
+    hdrs = [
+        "detail_common.h",
+        "detail_ignition.h",
+        "detail_path_utils.h",
+        "detail_tinyxml.h",
+    ],
+    install_hdrs_exclude = [
+        "detail_common.h",
+        "detail_ignition.h",
+        "detail_path_utils.h",
+        "detail_tinyxml.h",
+    ],
+    visibility = [
+        "//visibility:private",
+    ],
+    deps = [
+        ":package_map",
+        "//common:essential",
+        "//geometry:proximity_properties",
+        "//math:geometric_transform",
+        "//multibody/plant",
+        "@sdformat",
+        "@tinyxml2",
+    ],
+)
+
+drake_cc_library(
+    name = "detail_scene_graph",
+    srcs = [
+        "detail_scene_graph.cc",
+    ],
+    hdrs = [
+        "detail_scene_graph.h",
+    ],
+    install_hdrs_exclude = [
+        "detail_scene_graph.h",
+    ],
+    visibility = [
+        "//visibility:private",
+    ],
+    deps = [
+        ":detail_misc",
+        ":package_map",
+        "//geometry:geometry_roles",
+        "//geometry:scene_graph",
+        "//multibody/plant:coulomb_friction",
+        "@sdformat",
+    ],
+)
+
+drake_cc_library(
+    name = "detail_sdf_parser",
+    srcs = [
+        "detail_sdf_parser.cc",
+    ],
+    hdrs = [
+        "detail_sdf_parser.h",
+    ],
+    install_hdrs_exclude = [
+        "detail_sdf_parser.h",
+    ],
+    visibility = [
+        "//visibility:private",
+    ],
+    deps = [
+        ":detail_misc",
+        ":detail_scene_graph",
+        ":detail_urdf_parser",
+        ":scoped_names",
+        "//multibody/plant",
+        "@sdformat",
+    ],
+)
+
+drake_cc_library(
+    name = "detail_urdf_parser",
+    srcs = [
+        "detail_urdf_geometry.cc",
+        "detail_urdf_parser.cc",
+    ],
+    hdrs = [
+        "detail_urdf_geometry.h",
+        "detail_urdf_parser.h",
+    ],
+    install_hdrs_exclude = [
+        "detail_urdf_geometry.h",
+        "detail_urdf_parser.h",
+    ],
+    visibility = [
+        "//visibility:private",
+    ],
+    deps = [
+        ":detail_misc",
+        ":package_map",
+        ":scoped_names",
+        "//multibody/plant",
+        "@fmt",
+        "@tinyxml2",
+    ],
+)
+
+drake_cc_library(
+    name = "parser",
+    srcs = [
+        "parser.cc",
+    ],
+    hdrs = [
+        "parser.h",
+    ],
+    visibility = [
+        "//visibility:public",
+    ],
+    deps = [
+        ":detail_sdf_parser",
+        ":detail_urdf_parser",
+        "//common:filesystem",
+    ],
+)
+
+drake_cc_library(
+    name = "model_directives",
+    hdrs = [
+        "model_directives.h",
+    ],
+    visibility = [
+        "//visibility:public",
+    ],
+    deps = [
+        "//common:essential",
+        "//common:name_value",
+        "//common/schema:transform",
+        "//math:geometric_transform",
+    ],
+)
+
+drake_cc_library(
+    name = "process_model_directives",
+    srcs = ["process_model_directives.cc"],
+    hdrs = ["process_model_directives.h"],
+    visibility = [
+        "//visibility:public",
+    ],
+    deps = [
+        ":model_directives",
+        ":parser",
+        ":scoped_names",
+        "//common:filesystem",
+        "//common:find_resource",
+        "//common/yaml:yaml_read_archive",
+        "//multibody/plant",
+    ],
+)
+
+drake_cc_library(
+    name = "scoped_names",
+    srcs = ["scoped_names.cc"],
+    hdrs = ["scoped_names.h"],
+    deps = [
+        "//multibody/plant",
+    ],
+)
+
+drake_cc_library(
+    name = "test_loaders",
+    testonly = 1,
+    srcs = [
+        "test/test_loaders.cc",
+    ],
+    hdrs = [
+        "test/test_loaders.h",
+    ],
+    visibility = [
+        "//visibility:private",
+    ],
+    deps = [
+        ":detail_misc",
+        ":parser",
+        "//common:find_resource",
+    ],
+)
+
+drake_cc_googletest(
+    name = "acrobot_parser_test",
+    data = [
+        ":test_models",
+        "//multibody/benchmarks/acrobot:models",
+    ],
+    deps = [
+        ":test_loaders",
+        "//common/test_utilities",
+        "//multibody/benchmarks/acrobot",
+        "//multibody/benchmarks/acrobot:make_acrobot_plant",
+    ],
+)
+
+drake_cc_googletest(
+    name = "common_parser_test",
+    data = [
+        ":test_models",
+    ],
+    deps = [
+        ":test_loaders",
+        "//common/test_utilities",
+    ],
+)
+
+drake_cc_googletest(
+    name = "parser_test",
+    data = [
+        ":test_models",
+        "//multibody/benchmarks/acrobot:models",
+    ],
+    deps = [
+        ":parser",
+        "//common:filesystem",
+        "//common:find_resource",
+        "//common/test_utilities",
+    ],
+)
+
+filegroup(
+    name = "process_model_directives_test_models",
+    testonly = True,
+    data = glob(["test/process_model_directives_test/**"]),
+    visibility = [
+        "//bindings/pydrake/multibody:__pkg__",
+    ],
+)
+
+drake_cc_googletest(
+    name = "process_model_directives_test",
+    data = [
+        ":process_model_directives_test_models",
+    ],
+    deps = [
+        ":process_model_directives",
+        "//common/test_utilities:expect_throws_message",
+    ],
+)
+
+drake_cc_googletest(
+    name = "model_directives_test",
+    deps = [
+        ":model_directives",
+        "//common/yaml:yaml_read_archive",
+    ],
+)
+
+drake_cc_googletest(
+    name = "detail_common_test",
+    deps = [
+        ":detail_misc",
+    ],
+)
+
+drake_cc_googletest(
+    name = "detail_sdf_parser_test",
+    data = [
+        ":test_models",
+        "//manipulation/models/iiwa_description:models",
+        "//multibody/benchmarks/acrobot:models",
+    ],
+    deps = [
+        ":detail_sdf_parser",
+        "//common:filesystem",
+        "//common:find_resource",
+        "//common/test_utilities",
+    ],
+)
+
+drake_cc_googletest(
+    name = "detail_urdf_parser_test",
+    data = [
+        ":test_models",
+        "//examples/atlas:models",
+        "//manipulation/models/iiwa_description:models",
+        "//multibody/benchmarks/acrobot:models",
+    ],
+    deps = [
+        ":detail_urdf_parser",
+        "//common:filesystem",
+        "//common:find_resource",
+        "//common/test_utilities",
+        "//multibody/benchmarks/acrobot",
+        "//multibody/benchmarks/acrobot:make_acrobot_plant",
+    ],
+)
+
+drake_cc_googletest(
+    name = "detail_scene_graph_test",
+    data = [
+        ":test_models",
+    ],
+    deps = [
+        ":detail_scene_graph",
+        "//common/test_utilities:eigen_matrix_compare",
+        "//common/test_utilities:expect_throws_message",
+        "//math:geometric_transform",
+    ],
+)
+
+drake_cc_googletest(
+    name = "detail_urdf_geometry_test",
+    data = [
+        ":test_models",
+    ],
+    deps = [
+        ":detail_urdf_parser",
+        "//common:find_resource",
+        "//common/test_utilities",
+    ],
+)
+
+drake_cc_googletest(
+    name = "package_map_test",
+    data = [
+        ":test_models",
+    ],
+    deps = [
+        ":package_map",
+        "//common:filesystem",
+        "//common:find_resource",
+        "//common/test_utilities:expect_throws_message",
+    ],
+)
+
+drake_cc_googletest(
+    name = "drake_manifest_resolution_test",
+    data = [
+        ":test_models",
+    ],
+    deps = [
+        "//common:find_resource",
+        "//multibody/parsing",
+        "//systems/framework:diagram_builder",
+    ],
+)
+
+drake_cc_googletest(
+    name = "detail_path_utils_test",
+    data = [
+        ":test_models",
+    ],
+    deps = [
+        ":detail_misc",
+        "//common:filesystem",
+        "//common/test_utilities",
+    ],
+)
+
+drake_cc_googletest(
+    name = "detail_tinyxml_test",
+    deps = [
+        ":detail_misc",
+        "//common/test_utilities:eigen_matrix_compare",
+    ],
+)
+
+add_lint_tests()

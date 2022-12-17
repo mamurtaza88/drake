@@ -1,0 +1,176 @@
+# -*- python -*-
+
+load(
+    "@drake//tools/skylark:drake_cc.bzl",
+    "drake_cc_binary",
+    "drake_cc_googletest",
+    "drake_cc_library",
+    "drake_cc_package_library",
+)
+load(
+    "@drake//tools/skylark:drake_py.bzl",
+    "drake_py_binary",
+    "drake_py_library",
+    "drake_py_unittest",
+)
+load("//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+drake_py_library(
+    name = "module_py",
+    srcs = ["__init__.py"],
+    visibility = [":__pkg__"],
+    deps = [
+        "//manipulation:module_py",
+    ],
+)
+
+drake_cc_package_library(
+    name = "util",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":move_ik_demo_base",
+        ":moving_average_filter",
+        ":robot_plan_utils",
+    ],
+)
+
+drake_py_binary(
+    name = "geometry_inspector",
+    srcs = ["geometry_inspector.py"],
+    deps = [
+        ":show_model",
+        "//bindings/pydrake",
+    ],
+)
+
+drake_py_unittest(
+    name = "geometry_inspector_test",
+    data = [
+        ":geometry_inspector",
+        "//multibody/benchmarks/acrobot:models",
+    ],
+)
+
+drake_cc_library(
+    name = "move_ik_demo_base",
+    srcs = [
+        "move_ik_demo_base.cc",
+    ],
+    hdrs = [
+        "move_ik_demo_base.h",
+    ],
+    deps = [
+        ":robot_plan_utils",
+        "//lcmtypes:robot_plan",
+        "//manipulation/planner:constraint_relaxing_ik",
+        "//multibody/parsing",
+        "//multibody/plant",
+    ],
+)
+
+drake_cc_library(
+    name = "robot_plan_utils",
+    srcs = [
+        "robot_plan_utils.cc",
+    ],
+    hdrs = [
+        "robot_plan_utils.h",
+    ],
+    deps = [
+        "//common:default_scalars",
+        "//lcmtypes:robot_plan",
+        "//multibody/plant",
+    ],
+)
+
+# TODO(naveenoid) : Move the moving_average_filter to within drake/perception.
+drake_cc_library(
+    name = "moving_average_filter",
+    srcs = ["moving_average_filter.cc"],
+    hdrs = ["moving_average_filter.h"],
+    deps = ["//common:essential"],
+)
+
+drake_py_binary(
+    name = "show_model",
+    srcs = ["show_model.py"],
+    deps = [
+        ":module_py",
+        "//bindings/pydrake",
+    ],
+)
+
+drake_py_binary(
+    name = "meshlab_to_sdf",
+    srcs = ["meshlab_to_sdf.py"],
+)
+
+drake_cc_binary(
+    name = "stl2obj",
+    srcs = ["stl2obj.cc"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//common:add_text_logging_gflags",
+        "//common:essential",
+        "@gflags",
+        "@vtk//:vtkIOGeometry",
+    ],
+)
+
+# === test/ ===
+
+drake_cc_googletest(
+    name = "move_ik_demo_base_test",
+    data = [
+        "//manipulation/models/iiwa_description:models",
+    ],
+    deps = [
+        ":move_ik_demo_base",
+        "//manipulation/kuka_iiwa:iiwa_constants",
+    ],
+)
+
+drake_cc_googletest(
+    name = "robot_plan_utils_test",
+    data = [
+        "//manipulation/models/iiwa_description:models",
+    ],
+    deps = [
+        ":robot_plan_utils",
+        "//multibody/parsing",
+    ],
+)
+
+drake_cc_googletest(
+    name = "moving_average_filter_test",
+    srcs = ["test/moving_average_filter_test.cc"],
+    deps = [
+        ":moving_average_filter",
+        "//common:essential",
+        "//common/test_utilities:eigen_matrix_compare",
+        "//common/test_utilities:expect_no_throw",
+    ],
+)
+
+drake_py_unittest(
+    name = "show_model_test",
+    data = [
+        ":show_model",
+        "//multibody/benchmarks/acrobot:models",
+    ],
+)
+
+drake_py_unittest(
+    name = "meshlab_to_sdf_test",
+    data = [
+        "meshlab_to_sdf.py",
+    ],
+)
+
+add_lint_tests(
+    python_lint_extra_srcs = [
+        "convert_to_visualize_collisions.py",
+    ],
+)

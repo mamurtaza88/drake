@@ -1,0 +1,7 @@
+<launch>
+	<master auto="start" />
+	<group ns="lcm_to_ros">
+		<node pkg="lcm_to_ros" type="lcmt_iiwa_ee_pose_republisher" respawn="false" name="lcmt_iiwa_ee_pose_republisher_2" output="screen"/>
+		<node pkg="lcm_to_ros" type="lcmt_iiwa_status_republisher" respawn="false" name="lcmt_iiwa_status_republisher_2" output="screen"/>
+	</group>
+</launch>

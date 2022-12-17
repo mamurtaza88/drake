@@ -1,0 +1,9 @@
+# -*- python -*-
+
+licenses(["notice"])  # SGI-B-2.0
+
+cc_library(
+    name = "opengl",
+    linkopts = ["-framework OpenGL"],
+    visibility = ["//visibility:public"],
+)

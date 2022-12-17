@@ -1,0 +1,307 @@
+# -*- python -*-
+
+load(
+    "@drake//tools/skylark:drake_cc.bzl",
+    "drake_cc_binary",
+    "drake_cc_googletest",
+    "drake_cc_library",
+    "drake_cc_package_library",
+    "drake_cc_test",
+)
+load("@drake//tools/skylark:test_tags.bzl", "gurobi_test_tags")
+load("//tools/lint:lint.bzl", "add_lint_tests")
+
+package(default_visibility = ["//visibility:public"])
+
+drake_cc_package_library(
+    name = "inverse_kinematics",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":global_inverse_kinematics",
+        ":inverse_kinematics_core",
+        ":kinematic_constraint",
+    ],
+)
+
+drake_cc_library(
+    name = "kinematic_constraint",
+    srcs = [
+        "angle_between_vectors_constraint.cc",
+        "com_in_polyhedron_constraint.cc",
+        "com_position_constraint.cc",
+        "distance_constraint.cc",
+        "distance_constraint_utilities.cc",
+        "gaze_target_constraint.cc",
+        "kinematic_constraint_utilities.cc",
+        "minimum_distance_constraint.cc",
+        "orientation_constraint.cc",
+        "point_to_point_distance_constraint.cc",
+        "position_constraint.cc",
+        "unit_quaternion_constraint.cc",
+    ],
+    hdrs = [
+        "angle_between_vectors_constraint.h",
+        "com_in_polyhedron_constraint.h",
+        "com_position_constraint.h",
+        "distance_constraint.h",
+        "distance_constraint_utilities.h",
+        "gaze_target_constraint.h",
+        "kinematic_constraint_utilities.h",
+        "minimum_distance_constraint.h",
+        "orientation_constraint.h",
+        "point_to_point_distance_constraint.h",
+        "position_constraint.h",
+        "unit_quaternion_constraint.h",
+    ],
+    deps = [
+        "//common:default_scalars",
+        "//math:geometric_transform",
+        "//math:gradient",
+        "//multibody/plant",
+        "//solvers:constraint",
+        "//solvers:mathematical_program",
+        "//solvers:minimum_value_constraint",
+    ],
+)
+
+drake_cc_library(
+    name = "inverse_kinematics_core",
+    srcs = [
+        "inverse_kinematics.cc",
+    ],
+    hdrs = [
+        "inverse_kinematics.h",
+    ],
+    visibility = ["//visibility:private"],
+    deps = [
+        ":kinematic_constraint",
+        "//multibody/plant",
+        "//solvers:mathematical_program",
+    ],
+)
+
+drake_cc_library(
+    name = "global_inverse_kinematics",
+    srcs = [
+        "global_inverse_kinematics.cc",
+    ],
+    hdrs = [
+        "global_inverse_kinematics.h",
+    ],
+    deps = [
+        "//multibody/plant",
+        "//solvers:mathematical_program",
+        "//solvers:mixed_integer_rotation_constraint",
+        "//solvers:rotation_constraint",
+    ],
+)
+
+#============ Test ============================
+
+drake_cc_library(
+    name = "inverse_kinematics_test_utilities",
+    testonly = 1,
+    srcs = ["test/inverse_kinematics_test_utilities.cc"],
+    hdrs = ["test/inverse_kinematics_test_utilities.h"],
+    data = [
+        "//manipulation/models/iiwa_description:models",
+    ],
+    deps = [
+        "//common:default_scalars",
+        "//common:find_resource",
+        "//common/test_utilities:eigen_matrix_compare",
+        "//math:compute_numerical_gradient",
+        "//math:gradient",
+        "//multibody/benchmarks/kuka_iiwa_robot",
+        "//multibody/parsing",
+        "//multibody/plant",
+        "//multibody/tree",
+        "@gtest//:without_main",
+    ],
+)
+
+drake_cc_googletest(
+    name = "position_constraint_test",
+    deps = [
+        ":inverse_kinematics_test_utilities",
+        ":kinematic_constraint",
+    ],
+)
+
+drake_cc_googletest(
+    name = "com_position_constraint_test",
+    deps = [
+        ":inverse_kinematics_test_utilities",
+        ":kinematic_constraint",
+    ],
+)
+
+drake_cc_googletest(
+    name = "com_in_polyhedron_constraint_test",
+    deps = [
+        ":inverse_kinematics_test_utilities",
+        ":kinematic_constraint",
+        "//common/test_utilities:expect_throws_message",
+    ],
+)
+
+drake_cc_googletest(
+    name = "orientation_constraint_test",
+    deps = [
+        ":inverse_kinematics_test_utilities",
+        ":kinematic_constraint",
+        "//math:geometric_transform",
+    ],
+)
+
+drake_cc_googletest(
+    name = "gaze_target_constraint_test",
+    deps = [
+        ":inverse_kinematics_test_utilities",
+        ":kinematic_constraint",
+    ],
+)
+
+drake_cc_googletest(
+    name = "angle_between_vectors_constraint_test",
+    deps = [
+        ":inverse_kinematics_test_utilities",
+        ":kinematic_constraint",
+    ],
+)
+
+drake_cc_googletest(
+    name = "minimum_distance_constraint_test",
+    deps = [
+        ":inverse_kinematics_test_utilities",
+        ":kinematic_constraint",
+        "//common/test_utilities:expect_throws_message",
+        "//solvers/test_utilities",
+    ],
+)
+
+drake_cc_googletest(
+    name = "distance_constraint_test",
+    deps = [
+        ":inverse_kinematics_test_utilities",
+        ":kinematic_constraint",
+        "//solvers/test_utilities",
+    ],
+)
+
+drake_cc_googletest(
+    name = "point_to_point_distance_constraint_test",
+    deps = [
+        ":inverse_kinematics_test_utilities",
+        ":kinematic_constraint",
+        "//solvers/test_utilities",
+    ],
+)
+
+drake_cc_googletest(
+    name = "unit_quaternion_constraint_test",
+    deps = [
+        ":inverse_kinematics_test_utilities",
+        ":kinematic_constraint",
+        "//common/test_utilities:eigen_matrix_compare",
+        "//common/test_utilities:symbolic_test_util",
+        "//solvers:solve",
+    ],
+)
+
+drake_cc_googletest(
+    name = "inverse_kinematics_test",
+    deps = [
+        ":inverse_kinematics_core",
+        ":inverse_kinematics_test_utilities",
+        "//math:geometric_transform",
+        "//solvers:solve",
+    ],
+)
+
+drake_cc_library(
+    name = "global_inverse_kinematics_test_util",
+    testonly = 1,
+    srcs = ["test/global_inverse_kinematics_test_util.cc"],
+    hdrs = ["test/global_inverse_kinematics_test_util.h"],
+    data = [
+        "//manipulation/models/iiwa_description:models",
+    ],
+    deps = [
+        ":global_inverse_kinematics",
+        ":inverse_kinematics",
+        "//common:find_resource",
+        "//common/test_utilities:eigen_matrix_compare",
+        "//multibody/benchmarks/kuka_iiwa_robot",
+        "//multibody/parsing",
+        "//multibody/plant",
+        "//multibody/tree",
+        "@gtest//:without_main",
+    ],
+)
+
+drake_cc_googletest(
+    name = "global_inverse_kinematics_test",
+    timeout = "moderate",
+    tags = gurobi_test_tags() + [
+        # Takes too long to run with Valgrind.
+        "no_memcheck",
+        # Excluding because an assertion fails in LLVM code. Issue #6179.
+        "no_tsan",
+    ],
+    deps = [
+        ":global_inverse_kinematics",
+        ":global_inverse_kinematics_test_util",
+        "//solvers:gurobi_solver",
+    ],
+)
+
+drake_cc_googletest(
+    name = "global_inverse_kinematics_reachable_test",
+    timeout = "moderate",
+    tags = gurobi_test_tags() + [
+        # Takes too long to run with Valgrind.
+        "no_memcheck",
+        # Excluding because an assertion fails in LLVM code. Issue #6179.
+        "no_tsan",
+    ],
+    deps = [
+        ":global_inverse_kinematics",
+        ":global_inverse_kinematics_test_util",
+        "//solvers:gurobi_solver",
+    ],
+)
+
+drake_cc_googletest(
+    name = "global_inverse_kinematics_feasible_posture_test",
+    timeout = "long",
+    # This test is prohibitively slow with --compilation_mode=dbg.
+    disable_in_compilation_mode_dbg = True,
+    tags = gurobi_test_tags() + [
+        "no_asan",
+        # Takes too long to run with Valgrind.
+        "no_memcheck",
+        "no_tsan",
+    ],
+    deps = [
+        ":global_inverse_kinematics",
+        ":global_inverse_kinematics_test_util",
+        "//solvers:gurobi_solver",
+    ],
+)
+
+drake_cc_googletest(
+    name = "global_inverse_kinematics_collision_avoidance_test",
+    timeout = "moderate",
+    tags = gurobi_test_tags() + [
+        # Takes too long to run with Valgrind.
+        "no_memcheck",
+        # Excluding because an assertion fails in LLVM code. Issue #6179.
+        "no_tsan",
+    ],
+    deps = [
+        ":global_inverse_kinematics_test_util",
+    ],
+)
+
+add_lint_tests()

@@ -1,0 +1,45 @@
+# -*- python -*-
+
+load("@drake//tools/skylark:drake_cc.bzl", "drake_cc_binary")
+load(
+    "@drake//tools/performance:defs.bzl",
+    "drake_cc_googlebench_binary",
+)
+load("//tools/lint:lint.bzl", "add_lint_tests")
+
+drake_cc_googlebench_binary(
+    name = "mesh_intersection_benchmark",
+    srcs = ["mesh_intersection_benchmark.cc"],
+    test_timeout = "moderate",
+    deps = [
+        "//common:essential",
+        "//geometry/proximity:make_ellipsoid_field",
+        "//geometry/proximity:make_ellipsoid_mesh",
+        "//geometry/proximity:make_sphere_mesh",
+        "//geometry/proximity:mesh_intersection",
+        "//math",
+    ],
+)
+
+# TODO(jwnimmer-tri) Change this to a drake_cc_googlebench_binary (i.e., add
+# a unit test here) once we figure out how to mate googlebench with gflags.
+drake_cc_binary(
+    name = "render_benchmark",
+    srcs = ["render_benchmark.cc"],
+    defines = select({
+        "//tools/cc_toolchain:apple": [
+        ],
+        "//conditions:default": ["RENDER_ENGINE_GL_SUPPORTED"],
+    }),
+    deps = [
+        "//common:filesystem",
+        "//geometry/render",
+        "//geometry/render/gl_renderer",
+        "//systems/sensors:image_writer",
+        "@fmt",
+        "@gflags",
+        "@googlebenchmark//:benchmark",
+    ],
+)
+
+add_lint_tests()

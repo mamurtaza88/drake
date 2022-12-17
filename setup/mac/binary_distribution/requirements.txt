@@ -1,0 +1,10 @@
+ipywidgets
+lxml
+matplotlib
+notebook
+Pillow
+pydot
+PyYAML
+pyzmq
+tornado
+u-msgpack-python
